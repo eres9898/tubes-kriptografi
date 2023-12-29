@@ -1,12 +1,17 @@
 import streamlit as st
+
 from utils import (
     caesar_encryption, caesar_decryption, rode_encryption, rode_decryption,
     rot13_encryption, rot13_decryption, encrypt_vigenere_cipher, decrypt_vingenere_cipher
 )
-import pandas as pd
+
+st.set_page_config(page_title="Chiper App", page_icon="🧊", layout="centered", initial_sidebar_state="expanded", menu_items={
+        'About': "# This is a Chiper App. This is an *extremely* cool app!"
+    })
 
 st.title('Cipher App')
 st.caption('Made by: :blue[Muhammad Faridan Sutariya]')
+
 
 cipher_options = ['Caesar Cipher', 'Rode', 'Rot13', 'Vigenere']
 selected_cipher = st.selectbox('Select Cipher:', cipher_options)
@@ -35,8 +40,11 @@ def process_vigenere_cipher(message, option, key):
     else:
         return decrypt_vingenere_cipher(message.upper(), key)
 
+def is_alpha_string(s):
+    return s.isalpha()
+
 # File upload feature
-uploaded_file = st.file_uploader('Upload file (each plain text must be separated by a semicolon)', type=['csv', 'txt'])
+uploaded_file = st.file_uploader('Upload file (each  text must be separated by a semicolon)', type=['csv', 'txt'])
 
 if uploaded_file is not None:
     file_extension = uploaded_file.name.split('.')[-1].lower()
@@ -47,9 +55,9 @@ if uploaded_file is not None:
 
     key = None
     if selected_cipher == 'Caesar Cipher':
-        key = st.number_input('Enter Key:', value=1)
+        key = st.number_input('Key:', value=1)
     elif selected_cipher == "Vigenere":
-        key = st.text_input('Key:')
+        key = st.text_input('Key:', help="Example key: GOKIL or WTFIND")
         if not key:
             st.warning('Key cannot be empty for Vigenere Cipher!')
         elif not key.isalpha():
@@ -82,42 +90,36 @@ if uploaded_file is not None:
 else:
     st.subheader(f'{selected_cipher} Cipher')
     option = st.radio('Select Option:', ('Encryption', 'Decryption'))
-    message = st.text_input('Enter Message:')
+    message = st.text_input('Enter  Text:')
 
     if selected_cipher == 'Vigenere':
-        key = st.text_input('Key:')
-        if st.button('Encrypt' if option == 'Encryption' else 'Decrypt') and (not key or not key.isalpha()):
-            if not key:
-                st.warning('Key cannot be empty for Vigenere Cipher!')
-            else:
-                st.warning('Key for Vigenere Cipher must contain only alphabetic characters!')
-        else:
-            if not message:
-                st.warning('Please enter a message!')
-            else:
-                if selected_cipher == 'Caesar Cipher':
-                    processed_text = process_caesar_cipher(message, option, key)
-                elif selected_cipher == 'Rode':
-                    processed_text = process_rode_cipher(message, option)
-                elif selected_cipher == 'Rot13':
-                    processed_text = process_rot13_cipher(message, option)
-                else:
-                    processed_text = process_vigenere_cipher(message, option, key)
+        key = st.text_input('Key:', help="Example key: GOKIL or WTFIND")
+        if not key:
+            st.warning('Key cannot be empty for Vigenere Cipher!')
+        elif not key.isalpha():
+            st.warning('Key for Vigenere Cipher must contain only alphabetic characters!')
 
-                st.markdown(f'Processed Text: \n```\n{processed_text}\n```')
+        # Automatically process the input when both message and key are provided
+        if st.button('Encrypt' if option == 'Encryption' else 'Decrypt') and message and key.isalpha():
+            processed_text = process_vigenere_cipher(message, option, key)
+            st.markdown(f'Processed Text: \n```\n{processed_text}\n```')
     elif selected_cipher == 'Caesar Cipher':
-        key = st.number_input('Enter Key:', value=1)
+        key = st.number_input('Key:', value=1)
         
         if st.button('Encrypt' if option == 'Encryption' else 'Decrypt'):
             if not message:
-                st.warning('Please enter a message!')
+                st.warning('Please enter a  Text!')
+            elif not message.isalpha():
+                 st.warning(' Text must contain only alphabetic characters!')
             else:
                 processed_text = process_caesar_cipher(message, option, key)
                 st.markdown(f'Processed Text: \n```\n{processed_text}\n```')
     elif selected_cipher in ['Rode', 'Rot13']:
         if st.button('Encrypt' if option == 'Encryption' else 'Decrypt'):
             if not message:
-                st.warning('Please enter a message!')
+                st.warning('Please enter a  Text!')
+            elif not message.isalpha():
+                 st.warning(' Text must contain only alphabetic characters!')
             else:
                 if selected_cipher == 'Rode':
                     processed_text = process_rode_cipher(message, option)
