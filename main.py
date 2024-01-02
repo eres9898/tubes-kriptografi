@@ -80,11 +80,19 @@ if uploaded_file is not None:
                 else:
                     result = process_vigenere_cipher(message.replace(',', ''), option, key)
                 
-                processed_output.append((message.replace(',', ''), result))  # Store both message and processed output
+                processed_output.append((message.replace(',', ''), result))
 
-            # Display input and output
             for input_msg, output_msg in processed_output:
                 st.markdown(f'Input: {input_msg}\nProcessed Output: \n```\n{output_msg}\n```')
+
+            if processed_output:
+                output_text = "\n\n".join([f'Input: {input_msg}\nProcessed Output: \n{output_msg}' for input_msg, output_msg in processed_output])
+                st.download_button(
+                    label="Download Processed Results",
+                    data=output_text,
+                    file_name=f"processed_results_{selected_cipher.lower()}.txt",
+                    mime="text/plain"
+                )
 
 # Manual input
 else:
