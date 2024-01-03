@@ -1,4 +1,10 @@
 import streamlit as st
+from pdf2image import convert_from_bytes
+import pandas as pd
+import docx2txt
+import PyPDF2
+import io
+
 
 from utils import (
     caesar_encryption, caesar_decryption, rode_encryption, rode_decryption,
@@ -44,14 +50,37 @@ def is_alpha_string(s):
     return s.isalpha()
 
 # File upload feature
-uploaded_file = st.file_uploader('Upload file (each  text must be separated by a semicolon)', type=['csv', 'txt'])
+uploaded_file = st.file_uploader('Upload file (each  text must be separated by a semicolon)', type=['csv', 'txt', 'pdf', 'docx'])
 
 if uploaded_file is not None:
     file_extension = uploaded_file.name.split('.')[-1].lower()
 
-    file_contents = uploaded_file.getvalue().decode("utf-8")
-    messages = file_contents.split(';')
-    messages = [message.strip() for message in messages]
+    if file_extension == 'csv':
+        # Handle CSV file
+        df = pd.read_csv(uploaded_file)
+        messages = df['your_column_name'].tolist()  # Modify as per your CSV structure
+    
+    elif file_extension == 'txt':
+        # Handle TXT file
+        file_contents = uploaded_file.getvalue().decode("utf-8")
+        messages = file_contents.split(';')
+        messages = [message.strip() for message in messages]
+    
+    elif file_extension == 'pdf':
+        file_contents = uploaded_file.read()
+        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file_contents))
+        
+        num_pages = len(pdf_reader.pages)
+
+        messages = []
+        for page_num in range(num_pages):
+            page = pdf_reader.pages[page_num]
+            messages.append(page.extract_text())
+    
+    elif file_extension == 'docx':
+        # Handle DOCX file
+        text = docx2txt.process(uploaded_file)
+        messages = text.split('\n')  # Split text into messages as needed
 
     key = None
     if selected_cipher == 'Caesar Cipher':
