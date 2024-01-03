@@ -2,3 +2,6 @@ streamlit
 pdf2image
 docx2txt
 pypdf2
+reportlab
+python-docx
+openpyxl

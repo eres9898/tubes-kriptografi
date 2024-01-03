@@ -2,8 +2,12 @@ import streamlit as st
 from pdf2image import convert_from_bytes
 import pandas as pd
 import docx2txt
+import docx
 import PyPDF2
 import io
+from reportlab.pdfgen import canvas
+from openpyxl import load_workbook
+
 
 
 from utils import (
@@ -49,17 +53,28 @@ def process_vigenere_cipher(message, option, key):
 def is_alpha_string(s):
     return s.isalpha()
 
+output_docx = None
+
 # File upload feature
-uploaded_file = st.file_uploader('Upload file (each  text must be separated by a semicolon)', type=['csv', 'txt', 'pdf', 'docx'])
+uploaded_file = st.file_uploader('Upload file (each  text must be separated by a semicolon)', type=['xlsx', 'txt', 'pdf', 'docx'])
 
 if uploaded_file is not None:
     file_extension = uploaded_file.name.split('.')[-1].lower()
 
-    if file_extension == 'csv':
-        # Handle CSV file
-        df = pd.read_csv(uploaded_file)
-        messages = df['your_column_name'].tolist()  # Modify as per your CSV structure
-    
+    if file_extension == 'xlsx':
+        try:
+            wb = load_workbook(uploaded_file)
+            sheet = wb.active
+            messages = []
+            for row in sheet.iter_rows():
+                for cell in row:
+                    messages.append(str(cell.value))
+        except Exception as e:
+            st.error(f"Error reading Excel file: {e}")
+            messages = []
+        if not messages:
+            st.warning('No data found in the Excel file.')
+
     elif file_extension == 'txt':
         # Handle TXT file
         file_contents = uploaded_file.getvalue().decode("utf-8")
@@ -80,7 +95,7 @@ if uploaded_file is not None:
     elif file_extension == 'docx':
         # Handle DOCX file
         text = docx2txt.process(uploaded_file)
-        messages = text.split('\n')  # Split text into messages as needed
+        messages = text.split('\n')
 
     key = None
     if selected_cipher == 'Caesar Cipher':
@@ -116,11 +131,54 @@ if uploaded_file is not None:
 
             if processed_output:
                 output_text = "\n\n".join([f'Input: {input_msg}\nProcessed Output: \n{output_msg}' for input_msg, output_msg in processed_output])
+
+                df_output = pd.DataFrame(processed_output, columns=['Input', 'Processed Output'])
+
+
+                if file_extension == 'txt':
+                    file_type = "text/plain"
+                    file_extension = "txt"
+                    data = output_msg  
+                elif file_extension == 'pdf':
+                    file_type = "application/pdf"
+                    file_extension = "pdf"
+                    output_pdf = io.BytesIO()
+                    pdf = canvas.Canvas(output_pdf)
+                    y_coordinate = 800 
+                    for _, output_msg in processed_output:
+                        pdf.drawString(100, y_coordinate, output_msg)
+                        y_coordinate -= 20 
+                    pdf.save()
+                    output_pdf.seek(0)
+                    data = output_pdf 
+                elif file_extension == 'docx':
+                    file_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    file_extension = "docx"
+                    output_docx = io.BytesIO()
+                    docx_writer = docx.Document()
+                    for output in processed_output:
+                        docx_writer.add_paragraph(output[1])
+                    docx_writer.save(output_docx)
+                    output_docx.seek(0)
+                    data = output_docx 
+                elif file_extension == 'xlsx':
+                    # Handle Excel file
+                    file_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    file_extension = "xlsx"
+
+                    output_excel = io.BytesIO()
+                    with pd.ExcelWriter(output_excel, engine='openpyxl') as writer:
+                        df_output['Processed Output'].to_excel(writer, index=False, header=False)  
+                    output_excel.seek(0)
+                    data = output_excel
+                else:
+                    st.error('File type not supported or invalid.')
+
                 st.download_button(
                     label="Download Processed Results",
-                    data=output_text,
-                    file_name=f"processed_results_{selected_cipher.lower()}.txt",
-                    mime="text/plain"
+                    data=data,
+                    file_name=f"processed_results_{selected_cipher.lower()}.{file_extension}",
+                    mime=file_type
                 )
 
 # Manual input
@@ -136,10 +194,10 @@ else:
         elif not key.isalpha():
             st.warning('Key for Vigenere Cipher must contain only alphabetic characters!')
 
-        # Automatically process the input when both message and key are provided
         if st.button('Encrypt' if option == 'Encryption' else 'Decrypt') and message and key.isalpha():
             processed_text = process_vigenere_cipher(message, option, key)
             st.markdown(f'Processed Text: \n```\n{processed_text}\n```')
+            
     elif selected_cipher == 'Caesar Cipher':
         key = st.number_input('Key:', value=1)
         
